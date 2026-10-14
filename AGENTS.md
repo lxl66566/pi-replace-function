@@ -16,10 +16,20 @@ temperature: 0
 - 简单的函数不写单测
 - 对于复杂任务，请遵循原子化 commit
 
-# 项目规范
+# 项目愿景
 
-这是一个 SolidJS + UnoCSS (tailwind preset) + pnpm 项目。
+希望做一个 pi coding agent 的插件，提供一个 replace function 工具，可以让调用的 AI 声明某个函数并给出一段 content，然后直接用 Content 替换掉新函数。
 
-- 一切修改都必须考虑到 i18n、light/dark theme、屏幕比例的兼容性。
-- 你可以使用 solid-icons 图标库、solid-toast 提示库、kobalte 辅助组件开发。
-- TS 侧的动态 import 仅允许字符串字面量路径（如路由/模态框的 `lazy(() => import('./Xxx'))`，类型完全静态可推导）；禁止变量路径的动态 import（类型会退化为 `Promise<any>`）。
+目的：避免 hashline edit 的每行 hash 污染上下文和缓存；避免直接替换让 AI 完整输出一遍老代码内容。
+
+为什么选择函数？因为编程领域最多的、最广泛的东西就是函数。
+
+需要怎么实现：尽可能简单，不碰 ast-grep 的 DSL，让 AI 的替换成功率接近 100%；用行号还是函数名 + （可选的参数内容与数量，防重载）定位唯一函数，你自己分析。
+
+如果候选多于一个，需要 AI 确认，不要盲目就换了。想想怎么样才能把这个工具做得好用。
+
+如果函数上方紧跟注释，要不要替换？需要思考的问题。是否使用 tree-sitter？还是 ast-grep 同款 parser？自己判断。
+
+提示里要说清啥时候用自己，啥时候用其他替换方式，自己最适配啥。
+
+参考：C:/programs/fork/pi
