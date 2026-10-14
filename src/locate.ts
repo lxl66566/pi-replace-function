@@ -11,6 +11,13 @@ import {
 } from './langs.ts';
 import type { LinePos } from './text.ts';
 
+/** Name and parameters of a C-family declaration, which keeps both inside
+ * the declarator subtree (e.g. `static char *fmt(...)` or `int A::get()`). */
+export interface DeclaratorInfo {
+  readonly name: null | string;
+  readonly params: number;
+}
+
 export interface FunctionCandidate {
   readonly end: LinePos;
   /** 1-based inclusive end line */
@@ -43,17 +50,69 @@ export type LocateResult =
   /** nothing in the file declares this name */
   | { sameName: FunctionCandidate[]; status: 'ambiguous' };
 
+/** Name of a candidate node per its param source. */
+export function candidateName(
+  spec: FunctionKindSpec,
+  node: SgNode,
+): null | string {
+  if (spec.paramSource === ParamSource.Declarator)
+    return declaratorInfo(node)?.name ?? null;
+  return declarationName(node);
+}
+
+/** Count declared parameters; a missing parameter list counts as zero. */
+export function countParams(spec: FunctionKindSpec, node: SgNode): number {
+  if (spec.paramsLeafKind !== undefined) {
+    // Swift spreads parameters as direct children (no container node).
+    return node.namedChildren().filter(c => c.kind() === spec.paramsLeafKind)
+      .length;
+  }
+  if (spec.paramSource === ParamSource.Declarator)
+    return declaratorInfo(node)?.params ?? 0;
+  const holder = functionHolder(spec, node);
+  if (!holder) return 0;
+  if (spec.paramsContainerKind !== undefined) {
+    const container = holder
+      .namedChildren()
+      .find(c => c.kind() === spec.paramsContainerKind);
+    return container ? container.namedChildren().length : 0;
+  }
+  const parameters = holder.field(spec.paramsField ?? 'parameters');
+  return parameters ? parameters.namedChildren().length : 0;
+}
+
 /**
- * Declaration name: the `name` field, falling back to the first
- * property_identifier child (JavaScript field_definition has no name field).
+ * Declaration name for Self/Value kinds: the `name` field, falling back to
+ * the first property_identifier child (JavaScript field_definition has no
+ * name field). Qualified names (`A::get`, `M.foo`) reduce to their last
+ * segment so callers can match the bare name.
  */
 export function declarationName(node: SgNode): null | string {
   const name = node.field('name');
-  if (name) return name.text();
+  if (name) return normalizeName(name.text());
   const prop = node
     .namedChildren()
     .find(c => c.kind() === 'property_identifier');
-  return prop ? prop.text() : null;
+  return prop ? normalizeName(prop.text()) : null;
+}
+
+/** Walk down the declarator subtree to the first function_declarator. */
+export function declaratorInfo(node: SgNode): DeclaratorInfo | null {
+  const queue = [...node.children()];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) break;
+    if (current.kind() === 'function_declarator') {
+      const name = current.field('declarator');
+      const parameters = current.field('parameters');
+      return {
+        name: name ? normalizeName(name.text()) : null,
+        params: parameters ? parameters.namedChildren().length : 0,
+      };
+    }
+    queue.push(...current.children());
+  }
+  return null;
 }
 
 /** Collect every function declaration in the source, sorted by position. */
@@ -65,13 +124,13 @@ export function listFunctions(
   const out: FunctionCandidate[] = [];
   for (const kindSpec of spec.kinds) {
     for (const node of root.findAll({ rule: { kind: kindSpec.kind } })) {
-      const name = declarationName(node);
-      if (!name) continue;
       if (kindSpec.paramSource === ParamSource.Value) {
         const value = node.field('value');
         if (!value || !kindSpec.fnValueKinds?.includes(String(value.kind())))
           continue;
       }
+      const name = candidateName(kindSpec, node);
+      if (!name) continue;
       const range = node.range();
       out.push({
         end: { column: range.end.column, line: range.end.line },
@@ -117,12 +176,16 @@ export function locate(
   };
 }
 
-/** Count declared parameters; a missing parameters field counts as zero. */
-function countParams(spec: FunctionKindSpec, node: SgNode): number {
-  const holder =
-    spec.paramSource === ParamSource.Value ? node.field('value') : node;
-  const parameters = holder?.field('parameters');
-  return parameters ? parameters.namedChildren().length : 0;
+/** The node that carries the parameter list for this kind. */
+function functionHolder(spec: FunctionKindSpec, node: SgNode): null | SgNode {
+  if (spec.paramSource === ParamSource.Value) return node.field('value');
+  return node;
+}
+
+/** `A::get` / `M.foo` -> `get` / `foo`. */
+function normalizeName(name: string): string {
+  const parts = name.split(/[.:]+/).filter(p => p.length > 0);
+  return parts.at(-1) ?? name;
 }
 
 function previewOf(text: string): string {

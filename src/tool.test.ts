@@ -81,9 +81,9 @@ describe('replace_function tool', () => {
   });
 
   it('rejects unsupported file types', async () => {
-    const file = await withFile('def foo(): pass\n', 'a.py');
+    const file = await withFile('defmodule M do\nend\n', 'a.ex');
     await expect(execute({ name: 'foo', path: file })).rejects.toThrow(
-      /TypeScript\/JavaScript/,
+      /function-declaration languages/,
     );
   });
 

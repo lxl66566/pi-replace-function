@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { specForPath } from './langs.ts';
+import { commentLineFor, specForPath } from './langs.ts';
 import { locate } from './locate.ts';
 import { attachedCommentStart, replaceFunction } from './replace.ts';
 import { commonIndent, dedentLines, spliceSpan } from './text.ts';
@@ -53,12 +53,12 @@ describe('text helpers', () => {
 describe('attachedCommentStart', () => {
   const lines = ['// top', '', '/** doc */', '// note', 'function f() {}'];
   it('walks up through the attached comment block', () => {
-    expect(attachedCommentStart(lines, 4, ts.commentLine)).toBe(2);
+    expect(attachedCommentStart(lines, 4, commentLineFor(ts))).toBe(2);
     expect(
-      attachedCommentStart(['// a', 'function f() {}'], 1, ts.commentLine),
+      attachedCommentStart(['// a', 'function f() {}'], 1, commentLineFor(ts)),
     ).toBe(0);
     expect(
-      attachedCommentStart(['function f() {}'], 0, ts.commentLine),
+      attachedCommentStart(['function f() {}'], 0, commentLineFor(ts)),
     ).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe('attachedCommentStart', () => {
       attachedCommentStart(
         ['// top', '', '/** doc */', 'function f() {}'],
         3,
-        ts.commentLine,
+        commentLineFor(ts),
       ),
     ).toBe(2);
   });

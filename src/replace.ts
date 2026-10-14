@@ -5,7 +5,7 @@
  */
 import { parse } from '@ast-grep/napi';
 
-import type { LanguageSpec } from './langs.ts';
+import { commentLineFor, type LanguageSpec } from './langs.ts';
 import type { FunctionCandidate } from './locate.ts';
 import { dedentLines, spliceSpan, toLines, type LinePos } from './text.ts';
 
@@ -66,7 +66,7 @@ export function replaceFunction(
     const commentStart = attachedCommentStart(
       lines,
       candidate.start.line,
-      spec.commentLine,
+      commentLineFor(spec),
     );
     if (commentStart !== null) start = { column: 0, line: commentStart };
   }

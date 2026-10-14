@@ -1,6 +1,21 @@
 allowBuilds:
   '@google/genai': false
+  '@tree-sitter-grammars/tree-sitter-kotlin': false
+  '@tree-sitter-grammars/tree-sitter-lua': false
   esbuild: true
   protobufjs: false
   simple-git-hooks: true
+  tree-sitter-bash: false
+  tree-sitter-c: false
+  tree-sitter-c-sharp: false
+  tree-sitter-cpp: false
+  tree-sitter-go: false
+  tree-sitter-haskell: false
+  tree-sitter-java: false
+  tree-sitter-php: false
+  tree-sitter-python: false
+  tree-sitter-ruby: false
+  tree-sitter-rust: false
+  tree-sitter-scala: false
+  tree-sitter-swift: false
   unrs-resolver: true

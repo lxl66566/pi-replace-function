@@ -73,7 +73,7 @@ export const replaceFunctionToolDefinition: ToolDefinition<
 > = {
   constrainedSampling: { strict: 'prefer', type: 'json_schema' },
   description:
-    'Replace one entire function or method in a file by name, without restating the old code. Give only the new declaration; the tool locates the old one by name (`params` = parameter count, `line` = start line, disambiguate overloads and same-name methods) and swaps it. Surrounding modifiers (export, const), decorators and indentation are preserved from the file. Leading comments are kept unless the new content brings its own, which then replace them. Best for rewriting or refactoring a whole function body; prefer `edit` for small in-place tweaks or non-function regions, and `write` for new files or whole-file rewrites. Omit `content` to preview the current declaration first. TypeScript/JavaScript files only (.ts .tsx .js .jsx .mts .cts .mjs .cjs). When several declarations match, the tool lists them instead of replacing.',
+    'Replace one entire function or method in a file by name, without restating the old code. Give only the new declaration; the tool locates the old one by name (`params` = parameter count, `line` = start line, disambiguate overloads and same-name methods) and swaps it. Surrounding modifiers (export, const), decorators and indentation are preserved from the file. Leading comments are kept unless the new content brings its own, which then replace them. Best for rewriting or refactoring a whole function body; prefer `edit` for small in-place tweaks or non-function regions, and `write` for new files or whole-file rewrites. Omit `content` to preview the current declaration first. Supports TypeScript, JavaScript, Python, Rust, Go, Java, C, C++, C#, Ruby, PHP, Swift, Kotlin, Lua, Scala, Bash and Haskell files. When several declarations match, the tool lists them instead of replacing.',
   async execute(_toolCallId, input, signal, _onUpdate, ctx) {
     return applyReplaceFunction(input, ctx.cwd, signal);
   },
@@ -101,7 +101,7 @@ export async function applyReplaceFunction(
   const spec = specForPath(absolutePath);
   if (!spec) {
     throw new Error(
-      `replace_function supports TypeScript/JavaScript files only (.ts .tsx .js .jsx .mts .cts .mjs .cjs), got: ${input.path}`,
+      `replace_function supports only function-declaration languages (TypeScript, JavaScript, Python, Rust, Go, Java, C, C++, C#, Ruby, PHP, Swift, Kotlin, Lua, Scala, Bash, Haskell), got: ${input.path}`,
     );
   }
 

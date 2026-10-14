@@ -70,7 +70,26 @@ describe('specForPath', () => {
     expect(specForPath('a.ts')?.lang).toBe('TypeScript');
     expect(specForPath('a.TSX')?.lang).toBe('Tsx');
     expect(specForPath('a.mjs')?.lang).toBe('JavaScript');
-    expect(specForPath('a.py')).toBeUndefined();
+    for (const [path, lang] of [
+      ['a.py', 'Python'],
+      ['a.rs', 'Rust'],
+      ['a.go', 'Go'],
+      ['a.java', 'Java'],
+      ['a.c', 'C'],
+      ['a.hpp', 'Cpp'],
+      ['a.cs', 'CSharp'],
+      ['a.rb', 'Ruby'],
+      ['a.php', 'Php'],
+      ['a.swift', 'Swift'],
+      ['a.kt', 'Kotlin'],
+      ['a.lua', 'Lua'],
+      ['a.scala', 'Scala'],
+      ['a.sh', 'Bash'],
+      ['a.hs', 'Haskell'],
+    ] as const) {
+      expect(specForPath(path)?.lang).toBe(lang);
+    }
+    expect(specForPath('a.ex')).toBeUndefined();
     expect(specForPath('noext')).toBeUndefined();
   });
 });

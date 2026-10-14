@@ -4,8 +4,8 @@
  */
 import { parse, type SgNode } from '@ast-grep/napi';
 
-import { ParamSource, type LanguageSpec } from './langs.ts';
-import { declarationName } from './locate.ts';
+import { CommentFamily, ParamSource, type LanguageSpec } from './langs.ts';
+import { candidateName, countParams, declarationName } from './locate.ts';
 import { normalizeToLf } from './text.ts';
 
 export type ContentCheck =
@@ -41,17 +41,8 @@ const MODIFIERS = new Set([
   'var',
 ]);
 
-/** Kinds that only parse inside a class body; used for the wrap fallback. */
-const CLASS_BODY_KINDS = new Set([
-  'abstract_method_signature',
-  'field_definition',
-  'method_definition',
-  'method_signature',
-  'public_field_definition',
-]);
-
 const NO_TARGET_ERROR =
-  'content is not a complete function declaration — it may be truncated (missing closing brace or parenthesis) or a fragment. Provide the entire declaration, from the function/method/const header through the closing brace.';
+  'content is not a complete function declaration — it may be truncated (missing closing brace or parenthesis) or a fragment. Provide the entire declaration, from the function/method/const header through the closing body.';
 
 interface TriviaScan {
   comments: string[];
@@ -67,17 +58,19 @@ export function extractDeclaration(
   const text = normalizeToLf(content);
   if (text.trim() === '') return { error: NO_TARGET_ERROR, ok: false };
 
-  // Direct parse first; method-shaped fragments fall back to a class-body wrap.
-  let nodes = outermostTargets(text, spec, null);
+  // Direct parse first; method-shaped fragments fall back to a class-body wrap
+  // for languages whose method syntax requires an enclosing type.
+  let nodes = outermostTargets(text, spec);
   let base = 0;
   let wrapped = false;
-  if (nodes.length === 0) {
-    const wrapper = `class $Wrap {\n${text}\n}`;
-    nodes = outermostTargets(wrapper, spec, CLASS_BODY_KINDS);
-    base = `class $Wrap {\n`.length;
+  if (nodes.length === 0 && spec.classWrap !== null) {
+    const wrapper = spec.classWrap.replace('%s', text);
+    base = spec.classWrap.indexOf('%s');
+    nodes = outermostTargets(wrapper, spec);
     wrapped = true;
     if (nodes.length === 0) return { error: NO_TARGET_ERROR, ok: false };
   }
+  if (nodes.length === 0) return { error: NO_TARGET_ERROR, ok: false };
   if (nodes.length > 1) {
     return {
       error: `content contains ${nodes.length} function declarations; provide exactly one.`,
@@ -91,7 +84,7 @@ export function extractDeclaration(
   const prefix = text.slice(0, Math.max(0, range.start.index - base));
   const suffix = text.slice(Math.min(text.length, range.end.index - base));
 
-  const scanned = scanTrivia(prefix);
+  const scanned = scanTrivia(prefix, spec);
   const scannedSuffix = scanTrailingTrivia(suffix);
   if (!scanned.ok || !scannedSuffix.ok) {
     // In wrapped mode a trivia failure means the fragment did not cleanly
@@ -99,7 +92,7 @@ export function extractDeclaration(
     if (wrapped) return { error: NO_TARGET_ERROR, ok: false };
     if (!scanned.ok) {
       return {
-        error: `unexpected text before the declaration: ${snippet(scanned.rest)} — only whitespace, comments and modifiers (export, const, …) may surround the declaration.`,
+        error: `unexpected text before the declaration: ${snippet(scanned.rest)} — only whitespace, comments, modifiers and decorators may surround the declaration.`,
         ok: false,
       };
     }
@@ -109,16 +102,13 @@ export function extractDeclaration(
     };
   }
 
-  // Self kinds carry `parameters` directly; Value kinds keep it on the value node.
-  const parameters =
-    node.field('parameters') ?? node.field('value')?.field('parameters');
-  const params = parameters ? parameters.namedChildren().length : 0;
+  const kindSpec = spec.kinds.find(k => k.kind === String(node.kind()));
   return {
     decl: {
       leadComment:
         scanned.comments.length > 0 ? scanned.comments.join('\n') : null,
-      name: declarationName(node),
-      params,
+      name: kindSpec ? candidateName(kindSpec, node) : declarationName(node),
+      params: kindSpec ? countParams(kindSpec, node) : 0,
       text: text.slice(
         Math.max(0, range.start.index - base),
         Math.min(text.length, range.end.index - base),
@@ -138,18 +128,14 @@ function isAncestor(maybeAncestor: SgNode, node: SgNode): boolean {
   return false;
 }
 
-/** Collect target nodes, keeping only those not nested inside another target. */
-function outermostTargets(
-  source: string,
-  spec: LanguageSpec,
-  kinds: null | Set<string>,
-): SgNode[] {
+/** Collect target nodes, keeping only those not nested inside another target.
+ * Nodes without a usable name (declarators without a function value, …) are
+ * dropped so they never surface as candidates. */
+function outermostTargets(source: string, spec: LanguageSpec): SgNode[] {
   const root = parse(spec.lang, source).root();
   const all: SgNode[] = [];
   for (const kindSpec of spec.kinds) {
-    if (kinds && !kinds.has(kindSpec.kind)) continue;
     for (const node of root.findAll({ rule: { kind: kindSpec.kind } })) {
-      if (!declarationName(node)) continue;
       if (kindSpec.paramSource === ParamSource.Value) {
         const value = node.field('value');
         if (!value || !kindSpec.fnValueKinds?.includes(String(value.kind())))
@@ -174,8 +160,10 @@ function scanTrailingTrivia(text: string): TriviaScan {
   return { comments: [], ok: false, rest };
 }
 
-/** Whitespace, comments and modifier keywords only. */
-function scanTrivia(text: string): TriviaScan {
+/** Whitespace, comments, modifier keywords and decorator lines only.
+ * Decorator/annotation/attribute lines are tolerated but, unlike comments,
+ * never become part of the replacement — the file keeps its own. */
+function scanTrivia(text: string, spec: LanguageSpec): TriviaScan {
   const comments: string[] = [];
   let i = 0;
   while (i < text.length) {
@@ -184,18 +172,53 @@ function scanTrivia(text: string): TriviaScan {
       i++;
       continue;
     }
-    if (ch === '/' && text[i + 1] === '/') {
+    if (spec.decoratorLine) {
+      // `@Override`, `#[derive(..)]`, `[Route("..")]`, … to end of line.
+      const lineEnd = text.indexOf('\n', i);
+      const stop = lineEnd === -1 ? text.length : lineEnd;
+      if (spec.decoratorLine.test(text.slice(i, stop))) {
+        i = stop;
+        continue;
+      }
+    }
+    if (
+      spec.commentLineFamily === CommentFamily.C &&
+      ch === '/' &&
+      text[i + 1] === '/'
+    ) {
       const end = text.indexOf('\n', i);
       const stop = end === -1 ? text.length : end;
       comments.push(text.slice(i, stop));
       i = stop;
       continue;
     }
-    if (ch === '/' && text[i + 1] === '*') {
+    if (
+      spec.commentLineFamily === CommentFamily.C &&
+      ch === '/' &&
+      text[i + 1] === '*'
+    ) {
       const end = text.indexOf('*/', i + 2);
       if (end === -1) return { comments, ok: false, rest: text.slice(i) };
       comments.push(text.slice(i, end + 2));
       i = end + 2;
+      continue;
+    }
+    if (spec.commentLineFamily === CommentFamily.Hash && ch === '#') {
+      const end = text.indexOf('\n', i);
+      const stop = end === -1 ? text.length : end;
+      comments.push(text.slice(i, stop));
+      i = stop;
+      continue;
+    }
+    if (
+      spec.commentLineFamily === CommentFamily.Dash &&
+      ch === '-' &&
+      text[i + 1] === '-'
+    ) {
+      const end = text.indexOf('\n', i);
+      const stop = end === -1 ? text.length : end;
+      comments.push(text.slice(i, stop));
+      i = stop;
       continue;
     }
     const ident = /^[A-Z_$][\w$]*/i.exec(text.slice(i));
