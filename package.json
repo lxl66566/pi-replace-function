@@ -46,7 +46,7 @@
     "eslint-plugin-regexp": "^3.2.0",
     "lint-staged": "^17.3.0",
     "oxfmt": "^0.63.0",
-    "oxlint": "^1.78.0",
+    "oxlint": "^1.87.0",
     "simple-git-hooks": "^2.13.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
