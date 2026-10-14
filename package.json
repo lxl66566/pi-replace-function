@@ -1,0 +1,56 @@
+{
+  "name": "my-solid-template",
+  "version": "0.0.0",
+  "description": "",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "fmt": "oxfmt",
+    "lint": "oxlint . && eslint .",
+    "fix": "eslint --fix .",
+    "check": "tsc --noEmit --strict --skipLibCheck",
+    "verify": "pnpm fmt:check && pnpm lint && pnpm check && pnpm test",
+    "fmt:check": "oxfmt --check",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "prepare": "simple-git-hooks"
+  },
+  "dependencies": {
+    "solid-js": "^1.9.14"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@unocss/preset-wind4": "^66.7.5",
+    "@vitest/eslint-plugin": "^1.6.27",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-perfectionist": "^5.10.1",
+    "eslint-plugin-regexp": "^3.2.0",
+    "eslint-plugin-solid": "^0.15.0",
+    "lint-staged": "^17.3.0",
+    "oxfmt": "^0.63.0",
+    "oxlint": "^1.78.0",
+    "simple-git-hooks": "^2.13.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "unocss": "^66.7.5",
+    "vite": "^8.2.1",
+    "vite-plugin-solid": "^2.11.14",
+    "vitest": "^4.1.10"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs,json,jsonc,css,html,md,yml,yaml}": [
+      "oxlint --fix --no-error-on-unmatched-pattern",
+      "eslint --fix",
+      "oxfmt --no-error-on-unmatched-pattern"
+    ]
+  },
+  "packageManager": "pnpm@11.17.0+sha512.cca3cea332ad254bb84145f966d19f4879615210346fc92c79a047f23a0d7b3cca3c3792f0076ba1f1831d277efbcf0a9119b31a9a60eca7fb3d6231f331ef72"
+}
