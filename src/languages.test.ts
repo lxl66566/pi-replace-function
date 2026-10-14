@@ -170,19 +170,19 @@ describe('replace_function across languages', () => {
       const got = await replaceIn(c.src, c.file, {
         content: c.content,
         name: c.name,
-        ...(c.paramsNum === undefined ? {} : { params: c.paramsNum }),
+        ...(c.paramsNum === undefined ? {} : { params_num: c.paramsNum }),
       });
       expect(got).toBe(c.want);
     });
   }
 
-  it('disambiguates same-name Python declarations by params', async () => {
+  it('disambiguates same-name Python declarations by params_num', async () => {
     const src =
       'class A:\n    def run(self):\n        pass\n\n\ndef run(x, y):\n    return x\n';
     const got = await replaceIn(src, 'c.py', {
       content: 'def run(x, y):\n    return x + y\n',
       name: 'run',
-      params: 2,
+      params_num: 2,
     });
     expect(got).toBe(
       'class A:\n    def run(self):\n        pass\n\n\ndef run(x, y):\n    return x + y\n',

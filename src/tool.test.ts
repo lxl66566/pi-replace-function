@@ -71,7 +71,7 @@ describe('replace_function tool', () => {
     const result = await execute({
       content: 'function f(a: number, b: number) {\n  return a + b\n}',
       name: 'f',
-      params: 2,
+      params_num: 2,
       path: file,
     });
     expect(textOf(result)).toMatch(/Replaced f/);

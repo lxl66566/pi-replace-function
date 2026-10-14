@@ -45,7 +45,7 @@ const parameters = Type.Object({
     description:
       'Function name exactly as declared (`foo`; include `#` for private methods, quotes for string-literal names)',
   }),
-  params: Type.Optional(
+  params_num: Type.Optional(
     Type.Integer({
       description:
         'Disambiguator: number of declared parameters, when several declarations share the name (e.g. overloads). Optional/rest parameters count as one each.',
@@ -73,7 +73,7 @@ export const replaceFunctionToolDefinition: ToolDefinition<
 > = {
   constrainedSampling: { strict: 'prefer', type: 'json_schema' },
   description:
-    'Replace one entire function or method in a file by name, without restating the old code. Give only the new declaration; the tool locates the old one by name (`params` = parameter count, `line` = start line, disambiguate overloads and same-name methods) and swaps it. Surrounding modifiers (export, const), decorators and indentation are preserved from the file. Leading comments are kept unless the new content brings its own, which then replace them. Best for rewriting or refactoring a whole function body; prefer `edit` for small in-place tweaks or non-function regions, and `write` for new files or whole-file rewrites. Omit `content` to preview the current declaration first. Supports TypeScript, JavaScript, Python, Rust, Go, Java, C, C++, C#, Ruby, PHP, Swift, Kotlin, Lua, Scala, Bash and Haskell files. When several declarations match, the tool lists them instead of replacing.',
+    'Replace one entire function or method in a file by name, without restating the old code. Give only the new declaration; the tool locates the old one by name (`params_num` = parameter count, `line` = start line, disambiguate overloads and same-name methods) and swaps it. Surrounding modifiers (export, const), decorators and indentation are preserved from the file. Leading comments are kept unless the new content brings its own, which then replace them. Best for rewriting or refactoring a whole function body; prefer `edit` for small in-place tweaks or non-function regions, and `write` for new files or whole-file rewrites. Omit `content` to preview the current declaration first. Supports TypeScript, JavaScript, Python, Rust, Go, Java, C, C++, C#, Ruby, PHP, Swift, Kotlin, Lua, Scala, Bash and Haskell files. When several declarations match, the tool lists them instead of replacing.',
   async execute(_toolCallId, input, signal, _onUpdate, ctx) {
     return applyReplaceFunction(input, ctx.cwd, signal);
   },
@@ -135,7 +135,7 @@ export async function applyReplaceFunction(
     const located = locate(source, spec, {
       line: input.line,
       name: input.name,
-      params: input.params,
+      params: input.params_num,
     });
     if (located.status === 'not-found') {
       throw new Error(notFoundMessage(input.path, input.name, located.all));
@@ -215,7 +215,7 @@ function ambiguousMessage(name: string, sameName: FunctionCandidate[]): string {
     c => `- line ${c.line}, params ${c.params}: ${c.preview}`,
   );
   return [
-    `"${name}" matches ${sameName.length} declarations. Re-call with params (parameter count) or line (start line) to pick one:`,
+    `"${name}" matches ${sameName.length} declarations. Re-call with params_num (parameter count) or line (start line) to pick one:`,
     ...lines,
   ].join('\n');
 }
