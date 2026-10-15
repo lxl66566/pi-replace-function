@@ -31,7 +31,9 @@ export function dedentLines(lines: readonly string[]): string[] {
   );
 }
 
-/** CRLF when the text contains at least one CRLF sequence, LF otherwise. */
+/** CRLF when the text contains at least one CRLF sequence, LF otherwise.
+ * Mixed-ending files are normalized to one ending throughout, including
+ * regions the replacement did not touch. */
 export function detectLineEnding(text: string): LineEnding {
   return text.includes('\r\n') ? '\r\n' : '\n';
 }
