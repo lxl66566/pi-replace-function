@@ -2,7 +2,31 @@
   "name": "pi-replace-function",
   "version": "0.1.0",
   "description": "pi coding agent extension: replace a whole function by name",
+  "keywords": [
+    "ast-grep",
+    "code-editing",
+    "pi",
+    "pi-coding-agent",
+    "pi-extension",
+    "pi-package",
+    "tree-sitter"
+  ],
+  "homepage": "https://github.com/lxl66566/pi-replace-function#readme",
+  "bugs": {
+    "url": "https://github.com/lxl66566/pi-replace-function/issues"
+  },
   "license": "MIT",
+  "author": "lxl66566",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lxl66566/pi-replace-function.git"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "type": "module",
   "scripts": {
     "fmt": "oxfmt",
@@ -51,6 +75,9 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=1.0.0"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged"

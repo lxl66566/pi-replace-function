@@ -19,7 +19,13 @@ Not supported: Elixir (its `def` is a macro call, which has no declaration node 
 
 ## Install
 
-Requires pi with extension support. Put this directory under your user extensions directory (`~/.pi/agent/extensions/`) or your project extensions directory (`.pi/extensions/`), then install dependencies:
+```sh
+pi install npm:pi-replace-function
+```
+
+Requires pi with extension support (`@earendil-works/pi-coding-agent >= 1.0.0` as a peer). Grammar packages ship prebuilt binaries, so no compiler toolchain is needed.
+
+For local development, put this directory under your user extensions directory (`~/.pi/agent/extensions/`) or your project extensions directory (`.pi/extensions/`), then install dependencies:
 
 ```sh
 pnpm install
