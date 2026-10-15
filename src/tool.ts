@@ -80,7 +80,7 @@ export const replaceFunctionToolDefinition: ToolDefinition<
   label: 'replace function',
   name: 'replace_function',
   parameters,
-  prepareArguments: stripFencedContent,
+  prepareArguments: normalizeArguments,
   promptGuidelines: [
     'Use replace_function to rewrite a whole function or method: pass path, name and the complete new declaration; no need to restate or read the old body first.',
     'If unsure about the current shape, call replace_function without content to fetch the current declaration, then call again with the replacement.',
@@ -220,6 +220,26 @@ function ambiguousMessage(name: string, sameName: FunctionCandidate[]): string {
   ].join('\n');
 }
 
+/** Normalize model-supplied arguments: strict structured-output providers
+ * cannot omit optional fields, so omitted fields arrive as JSON null (or the
+ * string "null" for string-typed fields) — drop them so they read as
+ * omitted. Also strips one markdown code fence around content. Returns a
+ * new object; the input is not mutated. */
+function normalizeArguments(args: unknown): ReplaceFunctionInput {
+  if (!args || typeof args !== 'object') return args as ReplaceFunctionInput;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args as Record<string, unknown>)) {
+    if (value !== null) out[key] = value;
+  }
+  const { content } = out;
+  if (content === 'null' || content === 'undefined') delete out.content;
+  else if (typeof content === 'string') {
+    const fenced = /^```[^\n]*\n([\s\S]*?)\n?```\s*$/.exec(content);
+    if (fenced?.[1] !== undefined) out.content = fenced[1];
+  }
+  return out as ReplaceFunctionInput;
+}
+
 function notFoundMessage(
   path: string,
   name: string,
@@ -257,15 +277,4 @@ function resolveToCwd(filePath: string, cwd: string): string {
       ? filePath.replace(/^~/, homedir())
       : filePath;
   return resolve(cwd, expanded);
-}
-
-/** Some models wrap the content in a markdown code fence; strip one full fence. */
-function stripFencedContent(args: unknown): ReplaceFunctionInput {
-  if (!args || typeof args !== 'object') return args as ReplaceFunctionInput;
-  const record = args as Record<string, unknown>;
-  if (typeof record.content === 'string') {
-    const fenced = /^```[^\n]*\n([\s\S]*?)\n?```\s*$/.exec(record.content);
-    if (fenced?.[1] !== undefined) record.content = fenced[1];
-  }
-  return record as ReplaceFunctionInput;
 }

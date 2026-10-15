@@ -130,6 +130,27 @@ describe('replace_function tool', () => {
     );
   });
 
+  it('treats null-valued arguments as omitted (strict structured output)', async () => {
+    const file = await withFile('function foo() {\n  return 1\n}\n');
+    const args = {
+      content: 'null',
+      line: null,
+      name: 'foo',
+      params_num: null,
+      path: file,
+    };
+    const prepared = replaceFunctionToolDefinition.prepareArguments?.(args);
+    if (!prepared) throw new Error('prepareArguments missing');
+    // the input object is not mutated
+    expect(args.content).toBe('null');
+    // "null" content reads as omitted: the call probes instead of failing
+    const result = await execute(prepared);
+    expect(textOf(result)).toMatch(/Found "foo"/);
+    expect(await readFile(file, 'utf-8')).toBe(
+      'function foo() {\n  return 1\n}\n',
+    );
+  });
+
   it('rejects truncated content', async () => {
     const file = await withFile('function foo() {\n  return 1\n}\n');
     await expect(
