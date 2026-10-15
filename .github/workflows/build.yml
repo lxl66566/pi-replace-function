@@ -1,22 +1,12 @@
-name: Build and Deploy
+name: CI
+
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-
-# 设置 GITHUB_TOKEN 的权限
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# 允许一个并发部署
-concurrency:
-  group: 'pages'
-  cancel-in-progress: true
+  pull_request:
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '26'
           cache: 'pnpm'
 
       - name: Install Dependencies
@@ -46,26 +36,3 @@ jobs:
 
       - name: Test
         run: pnpm test
-
-      - name: Build
-        run: pnpm build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-  deploy:
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
